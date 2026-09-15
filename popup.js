@@ -85,6 +85,69 @@ function getStorage(type){
     ? {endpoint:"consoleEndpoint",token:"consoleToken",hardware:"consoleHardware",db:"consoleDb"}
     : {endpoint:"gameEndpoint",token:"gameToken",hardware:"gameHardware",db:"gameDb"};
 }
+
+// 接続設定をlocalStorageだけに依存せずIndexedDBにも保存する。
+// PWAをホーム画面に戻す／再起動しても設定を復元できるようにする。
+const PERSIST_DB_NAME="WorkHubPersistent";
+const PERSIST_DB_VERSION=1;
+const PERSIST_STORE="settings";
+let persistDbPromise=null;
+function openPersistDb(){
+  if(persistDbPromise)return persistDbPromise;
+  persistDbPromise=new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){resolve(null);return;}
+    const req=indexedDB.open(PERSIST_DB_NAME,PERSIST_DB_VERSION);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(PERSIST_STORE))req.result.createObjectStore(PERSIST_STORE);};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>resolve(null);
+  });
+  return persistDbPromise;
+}
+async function persistentSet(key,value){
+  try{
+    const db=await openPersistDb();
+    if(db){
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(PERSIST_STORE,"readwrite");
+        tx.objectStore(PERSIST_STORE).put(value,key);
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+      });
+    }
+  }catch(e){}
+  try{localStorage.setItem(`workhub_${key}`,JSON.stringify(value));}catch(e){}
+}
+async function persistentGet(key){
+  try{
+    const db=await openPersistDb();
+    if(db){
+      const value=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(PERSIST_STORE,"readonly");
+        const req=tx.objectStore(PERSIST_STORE).get(key);
+        req.onsuccess=()=>resolve(req.result);
+        req.onerror=()=>reject(req.error);
+      });
+      if(value!==undefined&&value!==null)return value;
+    }
+  }catch(e){}
+  try{
+    const raw=localStorage.getItem(`workhub_${key}`);
+    if(raw!==null){
+      const value=JSON.parse(raw);
+      // 旧版localStorageにしかない設定はIndexedDBへ移行
+      persistentSet(key,value);
+      return value;
+    }
+  }catch(e){}
+  return null;
+}
+async function savePersistentState(type){
+  const state=type==="console"
+    ? {consoleEndpoint,consoleToken,consoleHardware,consoleDb}
+    : type==="game"
+      ? {gameEndpoint,gameToken,gameHardware,gameDb}
+      : {shippingEndpoint,shippingToken,shippingPrefecture,shippingSize,shippingDb};
+  await Promise.all(Object.entries(state).map(([k,v])=>persistentSet(k,v)));
+}
 async function api(type,action,payload={}){
   const {endpoint,token}=getConfig(type);
   if(!endpoint||!token)throw new Error("Google Sheets接続設定が未入力です");
@@ -101,12 +164,7 @@ async function api(type,action,payload={}){
   return j;
 }
 async function saveState(type){
-  const state=type==="console"
-    ? {consoleEndpoint,consoleToken,consoleHardware,consoleDb}
-    : type==="game"
-      ? {gameEndpoint,gameToken,gameHardware,gameDb}
-      : {shippingEndpoint,shippingToken,shippingPrefecture,shippingSize,shippingDb};
-  Object.entries(state).forEach(([k,v])=>localStorage.setItem(`workhub_${k}`, JSON.stringify(v)));
+  await savePersistentState(type);
 }
 function renderTabHeader(){
   const normal=activeTab!=="shipping";
@@ -341,7 +399,7 @@ function renderShipping(){
   });
 }
 
-async function fetchSheet(type){
+async function fetchSheet(type,{silent=false}={}){
   if(syncing[type])return;
   const {endpoint,token}=getConfig(type);
   if(!endpoint||!token)return;
@@ -367,7 +425,10 @@ async function fetchSheet(type){
       setStatus(`${isShipping?"送料データ":"同期"}を取得済み · ${new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`);
     }
   }catch(e){
-    if(activeTab===type){setStatus("同期エラー",true);alert(e.message);}
+    if(activeTab===type){
+      setStatus("同期エラー（保存済みデータを表示中）",true);
+      if(!silent)alert(e.message);
+    }
   }finally{syncing[type]=false;}
 }
 async function loadSettings(){
@@ -377,10 +438,10 @@ async function loadSettings(){
     "shippingEndpoint","shippingToken","shippingPrefecture","shippingSize","shippingDb",
     "yaEndpoint","yaToken"
   ];
+  const values=await Promise.all(keys.map(k=>persistentGet(k)));
   const x={};
-  for(const k of keys){
-    try{x[k]=JSON.parse(localStorage.getItem(`workhub_${k}`)||"null");}catch(e){x[k]=null;}
-  }
+  keys.forEach((k,i)=>x[k]=values[i]);
+
   consoleEndpoint=x.consoleEndpoint||"";
   consoleToken=x.consoleToken||"";
   consoleHardware=x.consoleHardware||CONSOLE_HARDWARES[0]||"";
@@ -398,6 +459,7 @@ async function loadSettings(){
   yaToken=x.yaToken||"";
   if(!CONSOLE_HARDWARES.includes(consoleHardware))consoleHardware=CONSOLE_HARDWARES[0]||"";
   if(!GAME_HARDWARES.includes(gameHardware))gameHardware=GAME_HARDWARES[0]||"";
+
   el("consoleEndpoint").value=consoleEndpoint;
   el("consoleToken").value=consoleToken;
   el("gameEndpoint").value=gameEndpoint;
@@ -406,14 +468,29 @@ async function loadSettings(){
   el("shippingToken").value=shippingToken;
   el("yaEndpoint").value=yaEndpoint;
   el("yaToken").value=yaToken;
+
   renderTabHeader();renderHardwareOptions();
-  if(getConfig("console").endpoint&&getConfig("console").token)fetchSheet("console");
-  if(getConfig("game").endpoint&&getConfig("game").token)fetchSheet("game");
-  if(getConfig("shipping").endpoint&&getConfig("shipping").token)fetchSheet("shipping");
   if(shippingDb.length)populateShippingSelectors();
   render();
   updateMenuForTab();
+
+  // 保存済みの接続先があれば、起動直後にバックグラウンドで再接続。
+  await reconnectSavedConnections(true);
 }
+async function reconnectSavedConnections(silent=true){
+  const jobs=[];
+  if(consoleEndpoint&&consoleToken)jobs.push(fetchSheet("console",{silent}));
+  if(gameEndpoint&&gameToken)jobs.push(fetchSheet("game",{silent}));
+  if(shippingEndpoint&&shippingToken)jobs.push(fetchSheet("shipping",{silent}));
+  if(!jobs.length)return;
+  setStatus("保存済みの接続設定で再接続中…");
+  await Promise.allSettled(jobs);
+  if(activeTab!=="shipping" && (consoleEndpoint&&consoleToken || gameEndpoint&&gameToken)){
+    // fetchSheet成功時の表示を優先。失敗時は保存済みデータをそのまま表示。
+    render();
+  }
+}
+
 async function connectAll(){
   consoleEndpoint=el("consoleEndpoint").value.trim().replace(/\/+$/,"");
   consoleToken=el("consoleToken").value.trim();
@@ -424,8 +501,8 @@ async function connectAll(){
   yaEndpoint=el("yaEndpoint").value.trim().replace(/\/+$/,"");
   yaToken=el("yaToken").value.trim();
   await saveState("console");await saveState("game");await saveState("shipping");
-  localStorage.setItem("workhub_yaEndpoint",JSON.stringify(yaEndpoint));
-  localStorage.setItem("workhub_yaToken",JSON.stringify(yaToken));
+  await persistentSet("yaEndpoint",yaEndpoint);
+  await persistentSet("yaToken",yaToken);
   const checks=[];
   if(consoleEndpoint&&consoleToken)checks.push(api("console","ping"));
   if(gameEndpoint&&gameToken)checks.push(api("game","ping"));
@@ -499,6 +576,17 @@ document.addEventListener("DOMContentLoaded",()=>{
     try{await connectAll();el("settings").hidden=true;}
     catch(e){alert(e.message);}
   };
+
+  // 入力した時点でも保存。接続ボタンを押す前にPWAを離れても設定を失わない。
+  [
+    ["consoleEndpoint","consoleEndpoint"],["consoleToken","consoleToken"],
+    ["gameEndpoint","gameEndpoint"],["gameToken","gameToken"],
+    ["shippingEndpoint","shippingEndpoint"],["shippingToken","shippingToken"],
+    ["yaEndpoint","yaEndpoint"],["yaToken","yaToken"]
+  ].forEach(([id,key])=>{
+    const node=el(id);
+    if(node)node.addEventListener("input",()=>persistentSet(key,node.value.trim()));
+  });
   el("refresh").onclick=()=>{toggleMenu(false);fetchSheet(activeTab);};
   requireEl("hardware").onchange=async e=>{
     if(activeTab==="shipping")return;
@@ -531,5 +619,19 @@ document.addEventListener("DOMContentLoaded",()=>{
     const menu=el("menu"),button=el("menuButton");
     if(!menu.hidden&&!menu.contains(e.target)&&e.target!==button)menu.hidden=true;
   });
+
+  // ホーム画面へ戻って再表示された場合も、保存済み設定で再接続。
+  let reconnectTimer=null;
+  window.addEventListener("pageshow",()=>{
+    clearTimeout(reconnectTimer);
+    reconnectTimer=setTimeout(()=>reconnectSavedConnections(true).catch(()=>{}),250);
+  });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible"){
+      clearTimeout(reconnectTimer);
+      reconnectTimer=setTimeout(()=>reconnectSavedConnections(true).catch(()=>{}),250);
+    }
+  });
+
   loadSettings().catch(e=>setStatus(e.message,true));
 });

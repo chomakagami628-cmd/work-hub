@@ -1,4 +1,4 @@
-const CACHE = 'work-hub-pwa-v1.0.3-price-only';
+const CACHE = 'work-hub-pwa-v1.0.4-price-only';
 const ASSETS = [
   './', './index.html', './popup.css', './popup.js', './console-data.js', './game-data.js', './manifest.webmanifest'
 ];
