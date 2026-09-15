@@ -1,0 +1,174 @@
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;width:100%;min-width:0;overflow-x:hidden;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#f5f6f8;color:#222}
+header{padding:11px 14px 0;background:#fff;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:20}
+.header-inner{display:flex;align-items:center;gap:6px;min-width:0;width:100%}
+.title{font-size:12px;font-weight:700;white-space:nowrap;letter-spacing:-.35px;flex:0 0 auto}
+.auction-info-button{flex:0 0 118px;min-width:0;width:118px;height:28px;border:1px solid #c7c9ff;background:#fff;color:#4f46e5;border-radius:7px;padding:0 5px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.15px}
+.auction-info-button{margin-left:auto}
+.auction-info-button:hover{background:#f5f3ff}
+.auction-info-button:disabled{opacity:.6;cursor:wait}
+.gear-button{flex:0 0 30px}
+.gear-button{width:30px;height:30px;border:0;background:transparent;border-radius:8px;font-size:19px;cursor:pointer}
+.gear-button:hover{background:#f1f2f4}
+
+
+.tabs{display:flex;gap:4px;margin-top:8px}
+.tab{flex:1 1 0;min-width:0;border:0;background:transparent;border-bottom:3px solid transparent;padding:8px 5px 9px;font-size:10px;font-weight:700;color:#777;cursor:pointer;white-space:nowrap}
+.tab:hover{background:#f5f6f8}
+.tab.active{color:#222;border-bottom-color:#222}
+.menu{position:absolute;right:12px;top:88px;width:205px;background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 7px 22px rgba(0,0,0,.14);padding:5px;z-index:50}
+.menu button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:9px 10px;border-radius:7px;font-size:12px;cursor:pointer}
+.menu button:hover{background:#f2f3f5}
+main{max-width:760px;margin:auto;padding:0 12px 18px}
+.filter-bar{position:sticky;top:88px;z-index:10;background:#f5f6f8;padding:10px 0 9px;border-bottom:1px solid #ddd}
+.label{font-size:11px;color:#666;display:block;margin-bottom:4px}
+select,#search{width:100%;height:34px;border:1px solid #ccc;border-radius:7px;background:#fff;padding:0 9px;font-size:13px}
+.search-wrap{position:relative;margin-top:7px}
+.search-wrap input{padding-right:32px}
+#clearSearch{position:absolute;right:3px;top:2px;width:29px;height:29px;border:0;background:transparent;color:#888;font-size:19px;cursor:pointer}
+.filter-status{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:15px}
+.status,#count{font-size:10px;color:#777}
+#count{margin-left:auto}
+.categoryHeader{font-weight:700;font-size:14px;color:#2563eb;margin:10px 2px 6px;padding:4px 7px;background:#eceff3;border-radius:6px}
+.card{background:#fff;border:1px solid #ddd;border-radius:9px;padding:8px 9px;margin-bottom:6px;box-shadow:0 1px 2px rgba(0,0,0,.035)}
+.card-top{display:flex;align-items:center;gap:5px;min-width:0}
+.title-display{flex:1;min-width:0;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;padding:3px 2px}
+.copyable{cursor:pointer}
+.copyable:hover{text-decoration:underline}
+.title-input{display:none;flex:1;min-width:0;font-size:13px;font-weight:600;border:1px solid #ccc;border-radius:6px;padding:6px}
+.edit{flex:0 0 auto;border:0;background:#f1f2f4;color:#444;border-radius:6px;width:29px;height:29px;cursor:pointer;font-size:15px}
+.delete{display:none;border:0;background:#fff0f0;color:#c33;border-radius:6px;padding:0 8px;height:29px;cursor:pointer;font-size:11px}
+.grid{display:none;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.console-card .grid{grid-template-columns:1fr}
+.grid label{font-size:10px;color:#777}
+.grid input{display:block;width:100%;margin-top:3px;border:1px solid #ddd;border-radius:6px;padding:7px;font-size:12px}
+.grid .wide{grid-column:1/-1}
+.compact-prices{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:3px 31px 3px 2px;color:#777;align-items:baseline}
+.compact-prices>div{display:flex;gap:4px;align-items:baseline;min-width:0;overflow:hidden}
+.compact-prices span{font-size:9px;color:#999}
+.compact-prices strong{font-size:10.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asin-display{font-size:10px;color:#666;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.actions{display:flex;align-items:center;gap:5px;margin-top:5px;min-width:0}
+.asin-actions{display:flex;align-items:baseline;gap:4px;min-width:0;flex:1;overflow:hidden}
+.asin-prefix{font-size:9px;color:#999;flex:0 0 auto}
+.asin-actions .asin-display{font-size:10px;color:#666;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.actions button{border:1px solid #ccc;border-radius:6px;background:#fff;padding:4px 7px;cursor:pointer;font-size:10px;white-space:nowrap;flex:0 0 auto}
+.actions .primary{background:#111;color:#fff;border-color:#111}
+.actions .secondary,.actions .tertiary{background:#fff}
+.save{display:none}
+.saved{display:none;color:#2d7a3e;font-size:10px;margin-top:3px}
+.card.editing{padding:10px}
+.console-card.editing{padding:10px}
+.card.editing .title-display{display:none}
+.game-card.editing .title-input{display:block}
+.console-card.editing .grid{display:grid}
+.game-card.editing .grid{display:grid}
+.card.editing .compact-prices{display:none}
+.card.editing .asin-actions{display:none}
+.card.editing .delete,.card.editing .save{display:block}
+.card.editing .actions{margin-top:8px}
+.card.editing .actions .primary,.card.editing .actions .secondary{flex:1}
+.empty{padding:30px 10px;text-align:center;color:#888;font-size:12px}
+.settings{background:#fff;border:1px solid #ddd;border-radius:9px;padding:11px;margin:10px 0}
+.settings-title{font-size:12px;font-weight:700;margin-bottom:7px}
+.connection-block{border:1px solid #e1e1e1;border-radius:8px;padding:8px 9px;margin-top:7px}
+.connection-heading{font-size:11px;font-weight:700}
+.settings label{display:block;font-size:11px;color:#666;margin-top:7px}
+.settings input{width:100%;padding:7px;border:1px solid #ddd;border-radius:6px;margin-top:3px;font-size:12px}
+.settings-actions{display:flex;gap:6px;margin-top:9px}
+.settings-actions button{border:1px solid #ccc;border-radius:7px;background:#fff;padding:7px 10px;font-size:11px;cursor:pointer}
+#connect{background:#111;color:#fff;border-color:#111}
+.hint{font-size:10px;color:#777;line-height:1.5;margin:8px 0 0}
+@media(max-width:520px){
+ main{padding-left:8px;padding-right:8px}
+ .filter-bar{top:88px}
+ .tab{font-size:10px}
+}
+
+.shipping-filter-bar{
+  position:sticky;
+  top:88px;
+  z-index:10;
+  background:#f5f6f8;
+  padding:10px 0 9px;
+  border-bottom:1px solid #ddd;
+}
+.shipping-selects{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+}
+.shipping-selects select{
+  height:34px;
+  font-size:13px;
+}
+.shipping-results{
+  margin-top:10px;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:9px;
+  overflow:hidden;
+}
+.shipping-result-title{
+  padding:7px 9px;
+  background:#f5f6f8;
+  border-bottom:1px solid #ddd;
+  font-size:12px;
+  font-weight:700;
+}
+.shipping-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:38px;
+  padding:0 9px;
+  border-bottom:1px solid #eee;
+}
+.shipping-row:last-child{border-bottom:0}
+.shipping-company{
+  min-width:0;
+  flex:1;
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.shipping-price{
+  flex:0 0 auto;
+  min-width:68px;
+  border:0;
+  border-radius:6px;
+  background:#f1f2f4;
+  padding:5px 7px;
+  font-size:12px;
+  font-weight:700;
+  text-align:right;
+  cursor:pointer;
+}
+.shipping-price:hover{background:#e7e8eb}
+.shipping-price.unavailable{
+  color:#999;
+  font-size:10px;
+  font-weight:500;
+  cursor:default;
+}
+#shippingUpdated{
+  margin-left:auto;
+  font-size:9px;
+  color:#999;
+}
+.auction-url-dialog{width:min(100%,520px);background:#fff;border:1px solid #ddd;border-radius:12px;box-shadow:0 12px 35px rgba(0,0,0,.22);padding:16px}
+.auction-url-title{font-size:15px;font-weight:800;margin-bottom:7px;color:#4f46e5}
+.auction-url-dialog p{font-size:12px;color:#555;margin:0 0 10px;line-height:1.5}
+#auctionUrlInput{width:100%;height:40px;border:1px solid #bbb;border-radius:8px;padding:0 10px;font-size:13px;outline:none}
+#auctionUrlInput:focus{border-color:#4f46e5;box-shadow:0 0 0 2px rgba(79,70,229,.12)}
+.auction-url-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}
+.auction-url-actions button{border:1px solid #ccc;background:#fff;border-radius:7px;padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.auction-url-actions #auctionUrlExecute{background:#4f46e5;border-color:#4f46e5;color:#fff}
+.ya-connection{border-color:#d9d6ff}
+
+
+/* hidden属性のモーダルを確実に非表示 */

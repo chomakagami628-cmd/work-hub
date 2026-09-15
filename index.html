@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work Hub</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="title">🎮 Work Hub</div>
+    
+    <button id="menuButton" class="gear-button" aria-label="メニュー" title="メニュー">⚙️</button>
+  </div>
+  
+  <nav class="tabs" aria-label="管理対象">
+    <button class="tab active" data-tab="console">本体・周辺機器</button>
+    <button class="tab" data-tab="game">ゲームソフト</button>
+    <button class="tab" data-tab="shipping">送料</button>
+  </nav>
+  <div id="menu" class="menu" hidden>
+    <button id="settingsMenu">⚙ Google Sheets接続設定</button>
+    <button id="refresh">↻ 最新を取得</button>
+    <button id="add">＋ 新規</button>
+    <button id="export">💾 バックアップ</button>
+  </div>
+</header>
+
+
+
+<main>
+  <div class="filter-bar" id="normalFilterBar">
+    <label class="label" id="hardwareLabel">ハード</label>
+    <select id="hardware"></select>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="🔍 商品名・ASINを検索">
+      <button id="clearSearch" aria-label="検索をクリア">×</button>
+    </div>
+    <div class="filter-status">
+      <span class="status" id="status">未接続</span>
+      <span id="count"></span>
+    </div>
+  </div>
+  <div class="filter-bar shipping-filter-bar" id="shippingFilterBar" hidden>
+    <div class="shipping-selects">
+      <div>
+        <label class="label">発送元</label>
+        <select id="shippingPrefecture"></select>
+      </div>
+      <div>
+        <label class="label">サイズ</label>
+        <select id="shippingSize"></select>
+      </div>
+    </div>
+    <div class="filter-status">
+      <span class="status" id="shippingStatus">未接続</span>
+      <span id="shippingUpdated"></span>
+    </div>
+  </div>
+
+  <section class="settings" id="settings" hidden>
+    <div class="settings-title">Google Sheets接続設定</div>
+    <div class="connection-block">
+      <div class="connection-heading">本体・周辺機器</div>
+      <label>Apps Script WebアプリURL
+        <input id="consoleEndpoint" placeholder="https://script.google.com/macros/s/......../exec">
+      </label>
+      <label>認証キー
+        <input id="consoleToken" type="password" placeholder="Apps Scriptに設定したキー">
+      </label>
+    </div>
+    <div class="connection-block">
+      <div class="connection-heading">ゲームソフト</div>
+      <label>Apps Script WebアプリURL
+        <input id="gameEndpoint" placeholder="https://script.google.com/macros/s/......../exec">
+      </label>
+      <label>認証キー
+        <input id="gameToken" type="password" placeholder="Apps Scriptに設定したキー">
+      </label>
+    </div>
+    <div class="connection-block">
+      <div class="connection-heading">送料</div>
+      <label>Apps Script WebアプリURL
+        <input id="shippingEndpoint" placeholder="https://script.google.com/macros/s/......../exec">
+      </label>
+      <label>認証キー
+        <input id="shippingToken" type="password" placeholder="Apps Scriptに設定したキー">
+      </label>
+    </div>
+    <div class="connection-block ya-connection">
+      <div class="connection-heading">🔨 （PWA専用）</div>
+      <label>用Apps Script WebアプリURL
+        <input id="yaEndpoint" placeholder="https://script.google.com/macros/s/......../exec">
+      </label>
+      <label>認証キー（任意）
+        <input id="yaToken" type="password" placeholder="設定した場合のみ入力">
+      </label>
+      <p class="hint">既存の本体・周辺機器／ゲームソフト／送料用Apps Scriptは変更しません。</p>
+    </div>
+    <div class="settings-actions">
+      <button id="connect">接続して保存</button>
+      <button id="closeSettings">閉じる</button>
+    </div>
+    <p class="hint">本体・周辺機器、ゲームソフト、送料の接続先はそれぞれ別々に保存されます。</p>
+  </section>
+
+  <div id="results"></div>
+  <section id="shippingResults" class="shipping-results" hidden>
+    <div class="shipping-result-title">送料</div>
+    <div id="shippingRows"></div>
+  </section>
+</main>
+
+<template id="console-card-template">
+<article class="card console-card">
+  <div class="card-top">
+    <div class="title-display copyable" title="クリックでコピー"></div>
+    <button class="edit" aria-label="編集" title="編集">✎</button>
+    <button class="delete" title="削除">削除</button>
+  </div>
+  <div class="grid">
+    <label class="wide">商品名<input class="title-edit" placeholder="商品名" autocomplete="off"></label>
+    <label class="wide">ASIN<input class="asin" placeholder="B0XXXXXXXXXX" autocomplete="off"></label>
+  </div>
+  <div class="actions">
+    <div class="asin-actions">
+      <span class="asin-prefix">ASIN</span>
+      <strong class="asin-display copyable" title="クリックでコピー"></strong>
+    </div>
+    <button class="google-open secondary">Google</button>
+    <button class="amazon-open primary">Amazon</button>
+    <button class="yahoo-open secondary">ヤフオク</button>
+    <button class="save">保存</button>
+  </div>
+  <div class="saved">保存しました</div>
+</article>
+</template>
+
+<template id="game-card-template">
+<article class="card game-card">
+  <div class="card-top">
+    <div class="title-display copyable" title="クリックでコピー"></div>
+    <input class="title-input" placeholder="ソフト名" autocomplete="off">
+    <button class="edit" aria-label="編集" title="編集">✎</button>
+    <button class="delete" title="削除">削除</button>
+  </div>
+  <div class="compact-prices">
+    <div><span>Amazon価格</span><strong class="amazon-display"></strong></div>
+    <div><span>ヤフオク価格</span><strong class="yahoo-display"></strong></div>
+  </div>
+  <div class="grid">
+    <label>Amazon価格<input class="amazon" inputmode="numeric" placeholder="例：5480"></label>
+    <label>ヤフオク価格<input class="yahoo" inputmode="numeric" placeholder="例：4200"></label>
+    <label class="wide">ASIN<input class="asin" placeholder="B0XXXXXXXXXX" autocomplete="off"></label>
+  </div>
+  <div class="actions">
+    <div class="asin-actions">
+      <span class="asin-prefix">ASIN</span>
+      <strong class="asin-display copyable" title="クリックでコピー"></strong>
+    </div>
+    <button class="google-open tertiary">Google</button>
+    <button class="amazon-open primary">Amazon</button>
+    <button class="yahoo-open secondary">ヤフオク</button>
+    <button class="save">保存</button>
+  </div>
+  <div class="saved">保存しました</div>
+</article>
+</template>
+
+<script src="console-data.js"></script>
+<script src="game-data.js"></script>
+<script src="popup.js"></script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(console.error);}</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "Work Hub",
+  "short_name": "Work Hub",
+  "description": "本体・周辺機器、ゲームソフト、送料、YA Explorerをまとめて使えるPWA",
+  "id": "./",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#ffffff",
+  "lang": "ja",
+  "orientation": "portrait-primary"
+}
