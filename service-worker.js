@@ -1,4 +1,4 @@
-const CACHE = 'work-hub-pwa-v1.0.4-price-only';
+const CACHE = 'work-hub-pwa-v1.0.5-performance';
 const ASSETS = [
   './', './index.html', './popup.css', './popup.js', './console-data.js', './game-data.js', './manifest.webmanifest'
 ];
@@ -12,10 +12,12 @@ self.addEventListener('activate', event => {
 });
 self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== 'GET') return;
-  event.respondWith(caches.match(req).then(cached => cached || fetch(req).then(res => {
-    const copy = res.clone();
-    if (new URL(req.url).origin === self.location.origin) caches.open(CACHE).then(c => c.put(req, copy));
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  event.respondWith(fetch(req).then(res => {
+    if (res.ok) {
+      const copy = res.clone();
+      event.waitUntil(caches.open(CACHE).then(cache => cache.put(req, copy)));
+    }
     return res;
-  })));
+  }).catch(() => caches.match(req)));
 });

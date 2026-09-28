@@ -15,6 +15,8 @@ let consoleEndpoint="", consoleToken="";
 let gameEndpoint="", gameToken="";
 let yaEndpoint="", yaToken="";
 let syncing={console:false,game:false,shipping:false};
+const GAME_PAGE_SIZE=50;
+let gameVisibleCount=GAME_PAGE_SIZE;
 
 function el(id){return document.getElementById(id);}
 function requireEl(id){
@@ -185,14 +187,14 @@ function renderHardwareOptions(){
   select.innerHTML=list.map(h=>`<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
   select.value=list.includes(current)?current:(list[0]||"");
 }
-function switchTab(type,{fetch=true}={}){
+function switchTab(type){
+  if(activeTab!==type && type==="game")gameVisibleCount=GAME_PAGE_SIZE;
   activeTab=type==="game"?"game":type==="shipping"?"shipping":"console";
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===activeTab));
   renderTabHeader();
   renderHardwareOptions();
   if(activeTab!=="shipping") el("search").value=activeTab==="console"?consoleSearch:gameSearch;
   render();
-  if(fetch)fetchSheet(activeTab);
   updateMenuForTab();
 }
 function setEditMode(card,editing){
@@ -274,7 +276,7 @@ function renderGame(){
   resultsEl.innerHTML="";
   if(!filtered.length){resultsEl.innerHTML='<div class="empty">該当するソフトがありません</div>';return;}
   const t=getCardTemplate("game");
-  filtered.forEach(item=>{
+  filtered.slice(0,gameVisibleCount).forEach(item=>{
     const idx=all.indexOf(item),n=t.content.cloneNode(true),card=n.querySelector(".card");
     const title=n.querySelector(".title-input"),titleDisplay=n.querySelector(".title-display");
     const amazon=n.querySelector(".amazon"),yahoo=n.querySelector(".yahoo"),asin=n.querySelector(".asin");
@@ -317,6 +319,14 @@ function renderGame(){
     };
     resultsEl.appendChild(n);
   });
+  if(filtered.length>gameVisibleCount){
+    const more=document.createElement("button");
+    more.type="button";
+    more.className="load-more";
+    more.textContent=`さらに表示（残り${filtered.length-gameVisibleCount}件）`;
+    more.onclick=()=>{gameVisibleCount+=GAME_PAGE_SIZE;renderGame();};
+    resultsEl.appendChild(more);
+  }
 }
 function render(){
   const isShipping=activeTab==="shipping";
@@ -485,10 +495,6 @@ async function reconnectSavedConnections(silent=true){
   if(!jobs.length)return;
   setStatus("保存済みの接続設定で再接続中…");
   await Promise.allSettled(jobs);
-  if(activeTab!=="shipping" && (consoleEndpoint&&consoleToken || gameEndpoint&&gameToken)){
-    // fetchSheet成功時の表示を優先。失敗時は保存済みデータをそのまま表示。
-    render();
-  }
 }
 
 async function connectAll(){
@@ -595,11 +601,12 @@ document.addEventListener("DOMContentLoaded",()=>{
     }else{
       gameHardware=e.target.value;await saveState("game");
     }
-    render();fetchSheet(activeTab);
+    gameVisibleCount=GAME_PAGE_SIZE;
+    render();
   };
-  requireEl("search").oninput=e=>{if(activeTab!=="shipping"){setSearch(activeTab,e.target.value);render();}};
+  requireEl("search").oninput=e=>{if(activeTab!=="shipping"){setSearch(activeTab,e.target.value);gameVisibleCount=GAME_PAGE_SIZE;render();}};
   el("clearSearch").onclick=()=>{
-    el("search").value="";setSearch(activeTab,"");render();el("search").focus();
+    el("search").value="";setSearch(activeTab,"");gameVisibleCount=GAME_PAGE_SIZE;render();el("search").focus();
   };
   el("add").onclick=addItem;
   el("export").onclick=()=>{toggleMenu(false);exportBackup(activeTab);};
@@ -618,19 +625,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("click",e=>{
     const menu=el("menu"),button=el("menuButton");
     if(!menu.hidden&&!menu.contains(e.target)&&e.target!==button)menu.hidden=true;
-  });
-
-  // ホーム画面へ戻って再表示された場合も、保存済み設定で再接続。
-  let reconnectTimer=null;
-  window.addEventListener("pageshow",()=>{
-    clearTimeout(reconnectTimer);
-    reconnectTimer=setTimeout(()=>reconnectSavedConnections(true).catch(()=>{}),250);
-  });
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible"){
-      clearTimeout(reconnectTimer);
-      reconnectTimer=setTimeout(()=>reconnectSavedConnections(true).catch(()=>{}),250);
-    }
   });
 
   loadSettings().catch(e=>setStatus(e.message,true));
