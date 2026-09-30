@@ -47,6 +47,25 @@ function formatPrice(v){
   const n=Number(String(v).replace(/,/g,""));
   return Number.isFinite(n)?`¥${n.toLocaleString("ja-JP")}`:String(v);
 }
+function setPriceDisplay(display,value){
+  display.textContent=formatPrice(value);
+  display.classList.remove("price-zero","price-entered");
+  if(value===null||value===undefined||String(value).trim()==="")return;
+  const n=Number(String(value).replace(/,/g,""));
+  if(!Number.isFinite(n))return;
+  display.classList.add(n===0?"price-zero":"price-entered");
+}
+
+function setGameCardPriceColor(card,amazon,yahoo){
+  const prices=[amazon,yahoo].map(value=>{
+    if(value===null||value===undefined||String(value).trim()==="")return null;
+    const n=Number(String(value).replace(/[^0-9.-]/g,""));
+    return Number.isFinite(n)?n:null;
+  });
+  card.classList.remove("game-price-zero","game-price-entered");
+  if(prices.some(price=>price!==null&&price>0))card.classList.add("game-price-entered");
+  else if(prices.some(price=>price===0))card.classList.add("game-price-zero");
+}
 function categoryName(v){
   let s=String(v??"").trim();
   s=s.replace(/^【+|】+$/g,"").trim();
@@ -285,12 +304,12 @@ function renderGame(){
     const del=n.querySelector(".delete"),edit=n.querySelector(".edit"),saved=n.querySelector(".saved");
     title.value=item.title??"";titleDisplay.textContent=item.title??"";
     amazon.value=item.amazon??"";yahoo.value=item.yahoo??"";asin.value=item.asin??"";
-    amazonDisplay.textContent=formatPrice(item.amazon);yahooDisplay.textContent=formatPrice(item.yahoo);asinDisplay.textContent=item.asin||"ASINなし";
+    setPriceDisplay(amazonDisplay,item.amazon);setPriceDisplay(yahooDisplay,item.yahoo);setGameCardPriceColor(card,item.amazon,item.yahoo);asinDisplay.textContent=item.asin||"ASINなし";
     titleDisplay.onclick=()=>copyText(titleDisplay.textContent.trim());
     asinDisplay.onclick=()=>{const a=asin.value.trim();if(a&&a!=="◎")copyText(a);};
     edit.onclick=()=>setEditMode(card,!card.classList.contains("editing"));
     googleOpen.onclick=async()=>{
-      const q=[title.value.trim()||titleDisplay.textContent.trim(),"amazon"].filter(Boolean).join(" ");
+      const q=[title.value.trim()||titleDisplay.textContent.trim(),gameHardware,"Amazon"].filter(Boolean).join(" ");
       if(!q)return;try{await openExternalTab(`https://www.google.com/search?q=${encodeURIComponent(q)}`);}catch(e){alert(e.message);}
     };
     open.onclick=async()=>{
@@ -307,7 +326,7 @@ function renderGame(){
         if(gameEndpoint&&gameToken)await api("game","update",{sheet:gameHardware,row:idx+3,item:updated});
         gameDb[gameHardware][idx]=updated;await saveState("game");
         saved.style.display="block";setTimeout(()=>saved.style.display="none",1200);
-        titleDisplay.textContent=updated.title;amazonDisplay.textContent=formatPrice(updated.amazon);yahooDisplay.textContent=formatPrice(updated.yahoo);asinDisplay.textContent=updated.asin||"ASINなし";setEditMode(card,false);
+        titleDisplay.textContent=updated.title;setPriceDisplay(amazonDisplay,updated.amazon);setPriceDisplay(yahooDisplay,updated.yahoo);setGameCardPriceColor(card,updated.amazon,updated.yahoo);asinDisplay.textContent=updated.asin||"ASINなし";setEditMode(card,false);
       }catch(e){alert(e.message);}
     };
     del.onclick=async()=>{
