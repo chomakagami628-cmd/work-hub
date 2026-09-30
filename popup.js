@@ -232,7 +232,7 @@ async function openExternalTab(url){
 function renderConsole(){
   const resultsEl=el("results"),countEl=el("count");
   const all=consoleDb[consoleHardware]||[],q=normalize(consoleSearch);
-  const filtered=q?all.filter(x=>normalize(x.title).includes(q)||normalize(x.asin).includes(q)):all;
+  const filtered=q?all.filter(x=>normalize(x.title).includes(q)||normalize(x.asin).includes(q)):(newItem?[...all]:all);
   if(countEl)countEl.textContent=`${filtered.length}件 / ${all.length}件`;
   resultsEl.innerHTML="";
   if(!filtered.length){resultsEl.innerHTML='<div class="empty">該当する商品がありません</div>';return;}
@@ -287,13 +287,17 @@ function renderConsole(){
     });
   });
 }
-function renderGame(){
+function renderGame(newItem=null){
   const resultsEl=el("results"),countEl=el("count");
   const all=gameDb[gameHardware]||[],q=normalize(gameSearch);
   const filtered=q?all.filter(x=>normalize(x.title).includes(q)||normalize(x.asin).includes(q)):all;
   if(countEl)countEl.textContent=`${filtered.length}件 / ${all.length}件`;
   resultsEl.innerHTML="";
   if(!filtered.length){resultsEl.innerHTML='<div class="empty">該当するソフトがありません</div>';return;}
+  if(newItem){
+    const newIndex=filtered.indexOf(newItem);
+    if(newIndex>0){filtered.splice(newIndex,1);filtered.unshift(newItem);}
+  }
   const t=getCardTemplate("game");
   filtered.slice(0,gameVisibleCount).forEach(item=>{
     const idx=all.indexOf(item),n=t.content.cloneNode(true),card=n.querySelector(".card");
@@ -337,6 +341,7 @@ function renderGame(){
       }catch(e){alert(e.message);}
     };
     resultsEl.appendChild(n);
+    if(item===newItem)setEditMode(card,true);
   });
   if(filtered.length>gameVisibleCount){
     const more=document.createElement("button");
@@ -577,11 +582,13 @@ async function addItem(){
   }else{
     const item={title:"",amazon:"",yahoo:"",asin:""};
     try{
+      let newItem=item;
       if(gameEndpoint&&gameToken){
         const j=await api("game","append",{sheet:gameHardware,item});gameDb[gameHardware]=j.rows||[];
+        newItem=gameDb[gameHardware][gameDb[gameHardware].length-1];
       }else gameDb[gameHardware].unshift(item);
-      await saveState("game");render();
-      const first=el("results").querySelector(".card");if(first)setEditMode(first,true);
+      gameSearch="";el("search").value="";gameVisibleCount=GAME_PAGE_SIZE;
+      await saveState("game");renderGame(newItem);
     }catch(e){alert(e.message);}
   }
 }
