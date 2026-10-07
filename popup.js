@@ -28,6 +28,29 @@ function normalize(s){return String(s??"").normalize("NFKC").toLowerCase()
   .replace(/[ぁ-ゖ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60))
   .replace(/[ァ-ヺ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60))
   .replace(/\s+/g,"");}
+const KANA_ROMAJI = {"あ": "a", "い": "i", "う": "u", "え": "e", "お": "o", "か": "ka", "き": "ki", "く": "ku", "け": "ke", "こ": "ko", "さ": "sa", "し": "si", "す": "su", "せ": "se", "そ": "so", "た": "ta", "ち": "ti", "つ": "tu", "て": "te", "と": "to", "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no", "は": "ha", "ひ": "hi", "ふ": "hu", "へ": "he", "ほ": "ho", "ま": "ma", "み": "mi", "む": "mu", "め": "me", "も": "mo", "や": "ya", "ゆ": "yu", "よ": "yo", "ら": "ra", "り": "ri", "る": "ru", "れ": "re", "ろ": "ro", "わ": "wa", "を": "wo", "ん": "n", "が": "ga", "ぎ": "gi", "ぐ": "gu", "げ": "ge", "ご": "go", "ざ": "za", "じ": "zi", "ず": "zu", "ぜ": "ze", "ぞ": "zo", "だ": "da", "ぢ": "zi", "づ": "zu", "で": "de", "ど": "do", "ば": "ba", "び": "bi", "ぶ": "bu", "べ": "be", "ぼ": "bo", "ぱ": "pa", "ぴ": "pi", "ぷ": "pu", "ぺ": "pe", "ぽ": "po", "ぁ": "a", "ぃ": "i", "ぅ": "u", "ぇ": "e", "ぉ": "o", "ゔ": "vu", "きゃ": "kya", "きゅ": "kyu", "きょ": "kyo", "しゃ": "sya", "しゅ": "syu", "しょ": "syo", "ちゃ": "tya", "ちゅ": "tyu", "ちょ": "tyo", "にゃ": "nya", "にゅ": "nyu", "にょ": "nyo", "ひゃ": "hya", "ひゅ": "hyu", "ひょ": "hyo", "みゃ": "mya", "みゅ": "myu", "みょ": "myo", "りゃ": "rya", "りゅ": "ryu", "りょ": "ryo", "ぎゃ": "gya", "ぎゅ": "gyu", "ぎょ": "gyo", "じゃ": "zya", "じゅ": "zyu", "じょ": "zyo", "びゃ": "bya", "びゅ": "byu", "びょ": "byo", "ぴゃ": "pya", "ぴゅ": "pyu", "ぴょ": "pyo", "ふぁ": "fa", "ふぃ": "fi", "ふぇ": "fe", "ふぉ": "fo", "てぃ": "ti", "でぃ": "di", "うぃ": "wi", "うぇ": "we", "うぉ": "wo", "しぇ": "sye", "ちぇ": "tye", "じぇ": "zye", "ゔぁ": "va", "ゔぃ": "vi", "ゔぇ": "ve", "ゔぉ": "vo"};
+const searchKeyCache=new Map();
+function romanSpelling(s){return s.replace(/shi/g,"si").replace(/chi/g,"ti").replace(/tsu/g,"tu").replace(/fu/g,"hu").replace(/ji/g,"zi").replace(/sh([auo])/g,"sy$1").replace(/ch([auo])/g,"ty$1").replace(/j([auo])/g,"zy$1").replace(/nn/g,"n");}
+function romanize(s,expandLong=false){
+  s=normalize(s);let out="";
+  for(let i=0;i<s.length;i++){
+    if(s[i]==="っ") {const next=KANA_ROMAJI[s.slice(i+1,i+3)]||KANA_ROMAJI[s[i+1]]||"";out+=next.charAt(0);continue;}
+    if(s[i]==="ー"){if(expandLong&&/[aeiou]$/.test(out))out+=out.slice(-1);continue;}
+    const pair=KANA_ROMAJI[s.slice(i,i+2)];
+    if(pair){out+=pair;i++;}else out+=KANA_ROMAJI[s[i]]||s[i];
+  }
+  return romanSpelling(out);
+}
+function matchesSearch(item,q){
+  const title=normalize(item.title),asin=normalize(item.asin);
+  if(title.includes(q)||asin.includes(q))return true;
+  let keys=searchKeyCache.get(title);
+  if(!keys){keys=[romanize(title),romanize(title,true)];searchKeyCache.set(title,keys);}
+  const romanQ=romanSpelling(q.replace(/-/g,""));
+  return keys.some(key=>key.includes(romanQ));
+}
+const consoleExpandedCategories=new Set();
+
 function setStatus(s,bad=false){
   const n=el("status");
   if(n){n.textContent=s;n.style.color=bad?"#b42318":"#777";}
@@ -70,9 +93,6 @@ function categoryName(v){
   let s=String(v??"").trim();
   s=s.replace(/^【+|】+$/g,"").trim();
   s=s.replace(/^\d+\s*[.．:：、-]?\s*/g,"").trim();
-  if(s.includes("本体"))return "本体";
-  if(s.includes("コントローラー"))return "コントローラー";
-  if(s.includes("周辺機器"))return "周辺機器";
   return s||"その他";
 }
 function categoryOrder(v){
@@ -222,6 +242,7 @@ function setEditMode(card,editing){
   edit.textContent=editing?"✓":"✎";
   edit.title=editing?"編集を終了":"編集";
   if(editing){
+    const section=card.closest(".console-category");if(section)section.open=true;
     const input=card.querySelector(".title-edit")||card.querySelector(".title-input");
     if(input){input.focus();input.select?.();}
   }
@@ -231,8 +252,8 @@ async function openExternalTab(url){
 }
 function renderConsole(){
   const resultsEl=el("results"),countEl=el("count");
-  const all=consoleDb[consoleHardware]||[],q=normalize(consoleSearch);
-  const filtered=q?all.filter(x=>normalize(x.title).includes(q)||normalize(x.asin).includes(q)):(newItem?[...all]:all);
+  const all=(consoleDb[consoleHardware]||[]).filter(x=>String(x.title||"").trim()),q=normalize(consoleSearch);
+  const filtered=q?all.filter(x=>matchesSearch(x,q)):all;
   if(countEl)countEl.textContent=`${filtered.length}件 / ${all.length}件`;
   resultsEl.innerHTML="";
   if(!filtered.length){resultsEl.innerHTML='<div class="empty">該当する商品がありません</div>';return;}
@@ -241,10 +262,15 @@ function renderConsole(){
     const key=String(item.category||"");const name=categoryName(key);
     if(!groups.has(name))groups.set(name,[]);groups.get(name).push(item);
   });
-  [...groups.entries()].sort((a,b)=>categoryOrder(a[0])-categoryOrder(b[0])).forEach(([cat,items])=>{
-    const h=document.createElement("div");h.className="categoryHeader";h.textContent=`【${cat}】`;resultsEl.appendChild(h);
+  [...groups.entries()].forEach(([cat,items])=>{
+    const section=document.createElement("details");section.className="console-category";
+    const categoryKey=JSON.stringify([consoleHardware,cat]);
+    section.open=!!q||consoleExpandedCategories.has(categoryKey);
+    const h=document.createElement("summary");h.className="categoryHeader";h.textContent=`【${cat}】 ${items.length}件`;
+    const body=document.createElement("div");section.append(h,body);resultsEl.appendChild(section);
+    section.addEventListener("toggle",()=>{if(q)return;if(section.open)consoleExpandedCategories.add(categoryKey);else consoleExpandedCategories.delete(categoryKey);});
     items.forEach(item=>{
-      const idx=all.indexOf(item),n=getCardTemplate("console").content.cloneNode(true),card=n.querySelector(".card");
+      const idx=(consoleDb[consoleHardware]||[]).indexOf(item),n=getCardTemplate("console").content.cloneNode(true),card=n.querySelector(".card");
       card.dataset.row=String(item.row||idx+3);
       const titleDisplay=n.querySelector(".title-display"),titleEdit=n.querySelector(".title-edit");
       const asin=n.querySelector(".asin"),asinDisplay=n.querySelector(".asin-display");
@@ -280,17 +306,17 @@ function renderConsole(){
         if(!confirm(`「${titleEdit.value||titleDisplay.textContent}」を削除しますか？`))return;
         try{
           if(consoleEndpoint&&consoleToken)await api("console","delete",{sheet:consoleHardware,row:item.row||idx+3});
-          all.splice(idx,1);await saveState("console");render();
+          consoleDb[consoleHardware].splice(idx,1);await saveState("console");render();
         }catch(e){alert(e.message);}
       };
-      resultsEl.appendChild(n);
+      body.appendChild(n);
     });
   });
 }
 function renderGame(newItem=null){
   const resultsEl=el("results"),countEl=el("count");
   const all=gameDb[gameHardware]||[],q=normalize(gameSearch);
-  const filtered=q?all.filter(x=>normalize(x.title).includes(q)||normalize(x.asin).includes(q)):all;
+  const filtered=q?all.filter(x=>matchesSearch(x,q)):all;
   if(countEl)countEl.textContent=`${filtered.length}件 / ${all.length}件`;
   resultsEl.innerHTML="";
   if(!filtered.length){resultsEl.innerHTML='<div class="empty">該当するソフトがありません</div>';return;}
