@@ -182,3 +182,11 @@ select,#search{width:100%;height:34px;border:1px solid #ccc;border-radius:7px;ba
 
 .console-category > summary{cursor:pointer;user-select:none;}
 .console-category > summary:focus-visible{outline:2px solid #2563eb;outline-offset:2px;}
+
+.new-item{border-color:#93c5fd;background:#f8fbff;scroll-margin-top:130px}
+.new-item-heading{font-size:13px;font-weight:600;color:#2563eb}
+.new-item .grid{display:grid}
+.new-item .grid select{display:block;width:100%;margin-top:3px;border:1px solid #ddd;border-radius:6px;padding:7px;font-size:12px;background:#fff}
+.new-item .actions{flex-wrap:wrap}
+
+.new-item .grid input,.new-item .grid select{font-size:16px}

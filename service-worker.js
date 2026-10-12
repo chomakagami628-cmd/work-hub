@@ -1,4 +1,4 @@
-const CACHE = 'work-hub-pwa-v1.0.6-romaji-collapsible';
+const CACHE = 'work-hub-pwa-v1.0.7-new-item-top';
 const ASSETS = [
   './', './index.html', './popup.css', './popup.js', './console-data.js', './game-data.js', './manifest.webmanifest'
 ];

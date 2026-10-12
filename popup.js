@@ -374,7 +374,7 @@ function renderGame(newItem=null){
     more.type="button";
     more.className="load-more";
     more.textContent=`さらに表示（残り${filtered.length-gameVisibleCount}件）`;
-    more.onclick=()=>{gameVisibleCount+=GAME_PAGE_SIZE;renderGame();};
+    more.onclick=()=>{gameVisibleCount+=GAME_PAGE_SIZE;render();};
     resultsEl.appendChild(more);
   }
 }
@@ -385,6 +385,7 @@ function render(){
   if(activeTab==="console")renderConsole();
   else if(activeTab==="game")renderGame();
   else renderShipping();
+  renderNewItem();
 }
 function populateShippingSelectors(){
   const prefEl=el("shippingPrefecture"), sizeEl=el("shippingSize");
@@ -584,39 +585,74 @@ function exportBackup(type){
   const u=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));
   const a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
 }
-async function addItem(){
-  const type=activeTab;toggleMenu(false);
-  if(type==="shipping")return;
-  if(type==="console"){
-    const categories=[...new Set((consoleDb[consoleHardware]||[]).map(x=>x.category).filter(Boolean))];
-    const category=categories[0]||"1.本体";
-    const title=prompt("追加する商品名を入力してください");if(title===null)return;
-    const item={category,title:title.trim(),asin:""};
-    try{
-      let newRow;
-      if(consoleEndpoint&&consoleToken){
-        const j=await api("console","append",{sheet:consoleHardware,item});
-        consoleDb[consoleHardware]=j.rows||[];
-        newRow=consoleDb[consoleHardware].length?consoleDb[consoleHardware][consoleDb[consoleHardware].length-1].row:null;
-      }else{
-        item.row=(consoleDb[consoleHardware]||[]).length+3;consoleDb[consoleHardware].unshift(item);newRow=item.row;
-      }
-      await saveState("console");render();
-      const target=newRow!=null?el("results").querySelector(`.card[data-row="${CSS.escape(String(newRow))}"]`):null;
-      if(target)setEditMode(target,true);
-    }catch(e){alert(e.message);}
-  }else{
-    const item={title:"",amazon:"",yahoo:"",asin:""};
-    try{
-      let newItem=item;
-      if(gameEndpoint&&gameToken){
-        const j=await api("game","append",{sheet:gameHardware,item});gameDb[gameHardware]=j.rows||[];
-        newItem=gameDb[gameHardware][gameDb[gameHardware].length-1];
-      }else gameDb[gameHardware].unshift(item);
-      gameSearch="";el("search").value="";gameVisibleCount=GAME_PAGE_SIZE;
-      await saveState("game");renderGame(newItem);
-    }catch(e){alert(e.message);}
+const newItemDrafts=new Map();
+function draftKey(type,hardware){return JSON.stringify([type,hardware]);}
+function renderNewItem(){
+  if(activeTab==="shipping")return;
+  const type=activeTab,{hardware,db}=getState(type),key=draftKey(type,hardware);
+  const draft=newItemDrafts.get(key);if(!draft)return;
+  const form=document.createElement("form");form.className=`card ${type}-card editing new-item`;
+  form.innerHTML=`<div class="new-item-heading">＋ 新規追加</div>`;
+  const grid=document.createElement("div");grid.className="grid";form.appendChild(grid);
+  function field(label,name,placeholder="",select=false){
+    const wrapper=document.createElement("label");wrapper.className="wide";wrapper.textContent=label;
+    const input=document.createElement(select?"select":"input");input.name=name;input.value=draft[name]||"";
+    if(!select){input.placeholder=placeholder;input.autocomplete="off";}
+    input.oninput=()=>{draft[name]=input.value;};wrapper.appendChild(input);grid.appendChild(wrapper);return input;
   }
+  let category;
+  if(type==="console"){
+    category=field("分類（必須）","category","",true);category.required=true;
+    const categories=new Map();
+    (db[hardware]||[]).forEach(item=>{if(String(item.category||"").trim()&&!categories.has(categoryName(item.category)))categories.set(categoryName(item.category),item.category);});
+    category.innerHTML='<option value="">分類を選択してください</option>'+[...categories].map(([name,value])=>`<option value="${escapeHtml(value)}">【${escapeHtml(name)}】</option>`).join("");
+    category.value=categories.has(categoryName(draft.category))?draft.category:"";
+    if(!categories.size){const hint=document.createElement("div");hint.textContent="分類がありません。最新データを取得してください。";grid.appendChild(hint);}
+  }
+  const title=field(type==="console"?"商品名":"ソフト名","title",type==="console"?"商品名":"ソフト名");title.required=true;
+  if(type==="game"){
+    field("Amazon価格","amazon","例：5480").inputMode="numeric";
+    field("ヤフオク価格","yahoo","例：4200").inputMode="numeric";
+  }
+  const asin=field("ASIN","asin","B0XXXXXXXXXX");
+  const actions=document.createElement("div");actions.className="actions";form.appendChild(actions);
+  function button(label,handler){const btn=document.createElement("button");btn.type="button";btn.textContent=label;btn.onclick=handler;actions.appendChild(btn);return btn;}
+  button("Google",async()=>{const query=[title.value.trim(),type==="game"?hardware:"","Amazon"].filter(Boolean).join(" ");if(title.value.trim())try{await openExternalTab(`https://www.google.com/search?q=${encodeURIComponent(query)}`);}catch(e){alert(e.message);}});
+  button("Amazon",async()=>{const value=asin.value.trim();if(!value||value==="◎"){alert("ASINを入力してください。");return;}try{await openExternalTab(`https://www.amazon.co.jp/dp/${encodeURIComponent(value)}?aod=1`);}catch(e){alert(e.message);}});
+  button("ヤフオク",async()=>{if(!title.value.trim())return;const query=[title.value.trim(),type==="console"?"ジャンク":hardware].join(" ");try{await openExternalTab(`https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${encodeURIComponent(query)}&va=${encodeURIComponent(query)}&b=1&n=50`);}catch(e){alert(e.message);}});
+  const save=button("保存",()=>{});save.type="submit";save.className="save";
+  button("キャンセル",()=>{if(draft.saving)return;newItemDrafts.delete(key);render();});
+  form.onsubmit=async event=>{
+    event.preventDefault();if(draft.saving)return;
+    if(category&&!category.value){category.reportValidity();return;}
+    if(!title.value.trim()){title.setCustomValidity("商品名を入力してください。");title.reportValidity();return;}
+    const item=type==="console"?{category:category.value,title:title.value.trim(),asin:asin.value.trim()}:{title:title.value.trim(),amazon:draft.amazon.trim(),yahoo:draft.yahoo.trim(),asin:asin.value.trim()};
+    draft.saving=true;form.querySelectorAll("button,input,select").forEach(node=>node.disabled=true);
+    try{
+      const config=getConfig(type);
+      if(config.endpoint&&config.token){const result=await api(type,"append",{sheet:hardware,item});db[hardware]=result.rows||[];}
+      else{
+        if(!db[hardware])db[hardware]=[];
+        if(type==="console")item.row=Math.max(2,...db[hardware].map((entry,index)=>Number(entry.row)||index+3))+1;
+        db[hardware].push(item);
+      }
+      newItemDrafts.delete(key);
+      if(type==="console")consoleExpandedCategories.add(JSON.stringify([hardware,categoryName(item.category)]));
+      await saveState(type);render();setStatus("追加しました");
+    }catch(e){alert(e.message);}
+    finally{draft.saving=false;form.querySelectorAll("button,input,select").forEach(node=>node.disabled=false);}
+  };
+  title.addEventListener("input",()=>title.setCustomValidity(""));
+  if(draft.saving)form.querySelectorAll("button,input,select").forEach(node=>node.disabled=true);
+  el("results").prepend(form);
+}
+async function addItem(){
+  const type=activeTab;toggleMenu(false);if(type==="shipping")return;
+  const {hardware}=getState(type),key=draftKey(type,hardware);
+  if(!newItemDrafts.has(key))newItemDrafts.set(key,{category:"",title:"",asin:"",amazon:"",yahoo:""});
+  setSearch(type,"");el("search").value="";gameVisibleCount=GAME_PAGE_SIZE;render();
+  window.scrollTo({top:0,behavior:"auto"});
+
 }
 
 // PWA版YA Explorer：URL入力→専用YA Explorer API→同形式JSONをコピー
