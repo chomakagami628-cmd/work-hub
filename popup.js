@@ -334,7 +334,7 @@ function renderGame(newItem=null){
     const title=n.querySelector(".title-input"),titleDisplay=n.querySelector(".title-display");
     const amazon=n.querySelector(".amazon"),yahoo=n.querySelector(".yahoo"),asin=n.querySelector(".asin");
     const asinDisplay=n.querySelector(".asin-display"),amazonDisplay=n.querySelector(".amazon-display"),yahooDisplay=n.querySelector(".yahoo-display");
-    const save=n.querySelector(".save"),open=n.querySelector(".amazon-open"),yahooOpen=n.querySelector(".yahoo-open"),googleOpen=n.querySelector(".google-open");
+    const save=n.querySelector(".save"),open=n.querySelector(".amazon-open"),yahooOpen=n.querySelector(".yahoo-open"),googleOpen=n.querySelector(".google-open"),keepaOpen=n.querySelector(".keepa-open");
     const del=n.querySelector(".delete"),edit=n.querySelector(".edit"),saved=n.querySelector(".saved");
     title.value=item.title??"";titleDisplay.textContent=item.title??"";
     amazon.value=item.amazon??"";yahoo.value=item.yahoo??"";asin.value=item.asin??"";
@@ -349,6 +349,10 @@ function renderGame(newItem=null){
     open.onclick=async()=>{
       const a=asin.value.trim();if(!a||a==="◎"){alert("ASINを入力してください。");return;}
       try{await openExternalTab(`https://www.amazon.co.jp/dp/${encodeURIComponent(a)}?aod=1`);}catch(e){alert(e.message);}
+    };
+    keepaOpen.onclick=async()=>{
+      const a=asin.value.trim();if(!a||a==="◎"){alert("ASINを入力してください。");return;}
+      try{await openExternalTab(`https://keepa.com/product/5-${encodeURIComponent(a)}`);}catch(e){alert(e.message);}
     };
     yahooOpen.onclick=async()=>{
       const q=[title.value.trim()||titleDisplay.textContent.trim(),gameHardware].filter(Boolean).join(" ");
