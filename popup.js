@@ -274,7 +274,7 @@ function renderConsole(){
       card.dataset.row=String(item.row||idx+3);
       const titleDisplay=n.querySelector(".title-display"),titleEdit=n.querySelector(".title-edit");
       const asin=n.querySelector(".asin"),asinDisplay=n.querySelector(".asin-display");
-      const save=n.querySelector(".save"),googleOpen=n.querySelector(".google-open"),open=n.querySelector(".amazon-open"),yahooOpen=n.querySelector(".yahoo-open");
+      const save=n.querySelector(".save"),googleOpen=n.querySelector(".google-open"),open=n.querySelector(".amazon-open"),yahooOpen=n.querySelector(".yahoo-open"),keepaOpen=n.querySelector(".keepa-open");
       const del=n.querySelector(".delete"),edit=n.querySelector(".edit"),saved=n.querySelector(".saved");
       titleDisplay.textContent=item.title||"（商品名なし）";titleEdit.value=item.title||"";
       asin.value=item.asin||"";asinDisplay.textContent=item.asin||"ASINなし";
@@ -288,6 +288,10 @@ function renderConsole(){
       open.onclick=async()=>{
         const a=asin.value.trim();if(!a||a==="◎"){alert("ASINを入力してください。");return;}
         try{await openExternalTab(`https://www.amazon.co.jp/dp/${encodeURIComponent(a)}?aod=1`);}catch(e){alert(e.message);}
+      };
+      keepaOpen.onclick=async()=>{
+        const a=asin.value.trim();if(!a||a==="◎"){alert("ASINを入力してください。");return;}
+        try{await openExternalTab(`https://keepa.com/product/5-${encodeURIComponent(a)}`);}catch(e){alert(e.message);}
       };
       yahooOpen.onclick=async()=>{
         const q=[titleEdit.value.trim()||titleDisplay.textContent.trim(),"ジャンク"].filter(Boolean).join(" ");
@@ -619,6 +623,7 @@ function renderNewItem(){
   function button(label,handler){const btn=document.createElement("button");btn.type="button";btn.textContent=label;btn.onclick=handler;actions.appendChild(btn);return btn;}
   button("Google",async()=>{const query=[title.value.trim(),type==="game"?hardware:"","Amazon"].filter(Boolean).join(" ");if(title.value.trim())try{await openExternalTab(`https://www.google.com/search?q=${encodeURIComponent(query)}`);}catch(e){alert(e.message);}});
   button("Amazon",async()=>{const value=asin.value.trim();if(!value||value==="◎"){alert("ASINを入力してください。");return;}try{await openExternalTab(`https://www.amazon.co.jp/dp/${encodeURIComponent(value)}?aod=1`);}catch(e){alert(e.message);}});
+  button("Keepa",async()=>{const value=asin.value.trim();if(!value||value==="◎"){alert("ASINを入力してください。");return;}try{await openExternalTab(`https://keepa.com/product/5-${encodeURIComponent(value)}`);}catch(e){alert(e.message);}});
   button("ヤフオク",async()=>{if(!title.value.trim())return;const query=[title.value.trim(),type==="console"?"ジャンク":hardware].join(" ");try{await openExternalTab(`https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${encodeURIComponent(query)}&va=${encodeURIComponent(query)}&b=1&n=50`);}catch(e){alert(e.message);}});
   const save=button("保存",()=>{});save.type="submit";save.className="save";
   button("キャンセル",()=>{if(draft.saving)return;newItemDrafts.delete(key);render();});

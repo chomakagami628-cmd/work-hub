@@ -1,4 +1,4 @@
-const CACHE = 'work-hub-pwa-v1.0.7-new-item-top';
+const CACHE = 'work-hub-pwa-v1.0.8-keepa';
 const ASSETS = [
   './', './index.html', './popup.css', './popup.js', './console-data.js', './game-data.js', './manifest.webmanifest'
 ];
